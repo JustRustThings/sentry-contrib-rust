@@ -35,4 +35,7 @@ extern "C" {
 
     /// Detaches and frees the exception handler
     pub fn detach_exception_handler(handler: *mut ExceptionHandler);
+
+    /// Generate a minidump immediately.
+    pub fn generate_minidump(handler: *mut ExceptionHandler) -> bool;
 }

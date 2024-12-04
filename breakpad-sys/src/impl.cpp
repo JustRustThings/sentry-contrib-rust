@@ -149,4 +149,8 @@ extern "C" {
         delete handler->handler;
         delete handler;
     }
+
+    bool generate_minidump(ExcHandler* handler) {
+        return handler->handler->WriteMinidump();
+    }
 }
