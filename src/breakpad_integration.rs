@@ -92,6 +92,13 @@ impl BreakpadIntegration {
         })
     }
 
+    pub fn generate_minidump(&self) -> bool {
+        match self.crash_handler.as_ref() {
+            Some(handler) => handler.generate_minidump(),
+            None => false,
+        }
+    }
+
     /// Called during startup to send any minidumps + metadata that have been
     /// captured in previous sessions but (seem to) have not been sent yet
     fn upload_minidumps(crash_dir: &Path, hub: &sentry_core::Hub) {

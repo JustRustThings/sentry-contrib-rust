@@ -137,6 +137,14 @@ impl BreakpadHandler {
             Ok(Self { handler, on_crash })
         }
     }
+
+    pub fn generate_minidump(&self) -> bool {
+        #[allow(unsafe_code)]
+        // SAFETY: Calling into C code
+        unsafe {
+            breakpad_sys::generate_minidump(self.handler)
+        }
+    }
 }
 
 impl Drop for BreakpadHandler {
