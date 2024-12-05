@@ -77,7 +77,7 @@ impl BreakpadIntegration {
                     crash_hub.capture_event(event);
 
                     if let Some(client) = crash_hub.client() {
-                        client.close(None);
+                        client.flush(None);
                     }
                 }
             }),
