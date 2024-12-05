@@ -3,17 +3,17 @@ pub use error::Error;
 
 use std::sync::atomic;
 
-/// Trait used by the crash handler to notify the implementor that a crash was
+/// Trait used by the crash handler to notify the implementor that a dump was
 /// captured, providing the full path on disk to that minidump.
-pub trait CrashEvent: Sync + Send {
-    fn on_crash(&self, minidump_path: std::path::PathBuf);
+pub trait DumpEvent: Sync + Send {
+    fn on_dump(&self, minidump_path: std::path::PathBuf);
 }
 
-impl<F> CrashEvent for F
+impl<F> DumpEvent for F
 where
     F: Fn(std::path::PathBuf) + Send + Sync,
 {
-    fn on_crash(&self, minidump_path: std::path::PathBuf) {
+    fn on_dump(&self, minidump_path: std::path::PathBuf) {
         self(minidump_path);
     }
 }
@@ -47,7 +47,7 @@ pub enum InstallOptions {
 
 pub struct BreakpadHandler {
     handler: *mut breakpad_sys::ExceptionHandler,
-    on_crash: *mut std::ffi::c_void,
+    on_dump: *mut std::ffi::c_void,
 }
 
 #[allow(unsafe_code)]
@@ -62,7 +62,7 @@ impl BreakpadHandler {
     pub fn attach<P: AsRef<std::path::Path>>(
         crash_dir: P,
         install_opts: InstallOptions,
-        on_crash: Box<dyn CrashEvent>,
+        on_dump: Box<dyn DumpEvent>,
     ) -> Result<Self, Error> {
         match HANDLER_ATTACHED.compare_exchange(
             false,
@@ -74,7 +74,7 @@ impl BreakpadHandler {
             _ => {}
         }
 
-        let on_crash = Box::into_raw(Box::new(on_crash)).cast();
+        let on_dump = Box::into_raw(Box::new(on_dump)).cast();
 
         #[allow(unsafe_code)]
         // SAFETY: Calling into C code :shrug:
@@ -114,8 +114,8 @@ impl BreakpadHandler {
                     }
                 };
 
-                let context: Box<Box<dyn CrashEvent>> = unsafe { Box::from_raw(ctx.cast()) };
-                context.on_crash(path);
+                let context: Box<Box<dyn DumpEvent>> = unsafe { Box::from_raw(ctx.cast()) };
+                context.on_dump(path);
                 Box::leak(context);
             }
 
@@ -130,11 +130,11 @@ impl BreakpadHandler {
                 path.as_ptr(),
                 path.len(),
                 crash_callback,
-                on_crash,
+                on_dump,
                 install_opts,
             );
 
-            Ok(Self { handler, on_crash })
+            Ok(Self { handler, on_dump })
         }
     }
 
@@ -153,7 +153,7 @@ impl Drop for BreakpadHandler {
         // SAFETY: Calling into C code
         unsafe {
             breakpad_sys::detach_exception_handler(self.handler);
-            let _: Box<Box<dyn CrashEvent>> = Box::from_raw(self.on_crash.cast());
+            let _: Box<Box<dyn DumpEvent>> = Box::from_raw(self.on_dump.cast());
             HANDLER_ATTACHED.swap(false, atomic::Ordering::Relaxed);
         }
     }
