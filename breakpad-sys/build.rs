@@ -59,6 +59,7 @@ fn main() {
                     "safe_readlink",
                 ],
             );
+            build.file("breakpad/src/common/linux/breakpad_getcontext.S");
 
             add_sources(&mut build, "breakpad/src/client/linux/log", &["log"]);
 
