@@ -1,5 +1,9 @@
 use sentry_core::protocol as proto;
-use std::{path::Path, time::SystemTime};
+use std::{
+    path::{Path, PathBuf},
+    sync::{Arc, Mutex},
+    time::SystemTime,
+};
 
 pub use breakpad_handler::InstallOptions;
 
@@ -7,6 +11,7 @@ pub use breakpad_handler::InstallOptions;
 /// and reporting the crash event to Sentry.
 pub struct BreakpadIntegration {
     crash_handler: Option<breakpad_handler::BreakpadHandler>,
+    last_dump_path: Arc<Mutex<Option<PathBuf>>>,
 }
 
 impl BreakpadIntegration {
@@ -28,11 +33,20 @@ impl BreakpadIntegration {
         // anyway, but then again, it's C++ code, so I have low trust
         std::fs::create_dir_all(&crash_dir)?;
 
+        let last_dump_path = Arc::new(Mutex::new(None));
+        let last_dump_path_weak = Arc::downgrade(&last_dump_path);
+
         let crash_hub = std::sync::Arc::downgrade(&hub);
         let crash_handler = breakpad_handler::BreakpadHandler::attach(
             &crash_dir,
             install_options,
             Box::new(move |minidump_path: std::path::PathBuf| {
+                if let Some(last_dump_path) = last_dump_path_weak.upgrade() {
+                    if let Ok(mut guard) = last_dump_path.lock() {
+                        *guard = Some(minidump_path.clone());
+                    }
+                }
+
                 if let Some(crash_hub) = crash_hub.upgrade() {
                     // We **don't** do end_session_with_status as it just
                     // immediately takes the session from the scope and sends it,
@@ -89,6 +103,7 @@ impl BreakpadIntegration {
 
         Ok(Self {
             crash_handler: Some(crash_handler),
+            last_dump_path,
         })
     }
 
@@ -97,6 +112,10 @@ impl BreakpadIntegration {
             Some(handler) => handler.generate_minidump(),
             None => false,
         }
+    }
+
+    pub fn get_last_minidump_path(&self) -> Option<PathBuf> {
+        self.last_dump_path.lock().ok().and_then(|g| g.clone())
     }
 
     /// Called during startup to send any minidumps + metadata that have been
