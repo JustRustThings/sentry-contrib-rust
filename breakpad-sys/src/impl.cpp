@@ -48,6 +48,10 @@ extern "C" {
             ) -> bool {
                 auto* ctx = (BreakpadContext*)context;
 
+                if (!succeeded) {
+                    return succeeded;
+                }
+
                 // We have to construct the full path to the minidump file ourselves
                 google_breakpad::wstring dump_path(breakpad_dump_path);
                 dump_path.push_back('/');
@@ -81,6 +85,10 @@ extern "C" {
             ) -> bool {
                 auto* ctx = (BreakpadContext*)context;
 
+                if (!succeeded) {
+                    return succeeded;
+                }
+
                 std::string dump_path(dump_dir);
                 dump_path.push_back('/');
                 dump_path.append(minidump_id);
@@ -113,6 +121,10 @@ extern "C" {
                 bool succeeded
             ) -> bool {
                 auto* ctx = (BreakpadContext*)context;
+
+                if (!succeeded) {
+                    return succeeded;
+                }
 
                 auto* dump_path = descriptor.path();
 
