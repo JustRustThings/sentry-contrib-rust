@@ -43,7 +43,7 @@ fn main() {
         .as_str()
     {
         "linux" | "android" => {
-            build.define("TARGET_OS_LINUX", None).include("lss");
+            build.define("TARGET_OS_LINUX", "1").include("lss");
 
             add_sources(&mut build, "breakpad/src/client", &["minidump_file_writer"]);
 
