@@ -3,6 +3,10 @@
 
 #include "exception_handler.h"
 
+#if defined(TARGET_OS_LINUX)
+    #include <sys/prctl.h>
+#endif
+
 #if TARGET_OS_WINDOWS
     #define CHAR_TYPE uint16_t
 #else
@@ -16,6 +20,10 @@ typedef void (*dump_callback)(const CHAR_TYPE*, size_t, void*);
 struct BreakpadContext {
     dump_callback callback;
     void* callback_ctx;
+#if defined(TARGET_OS_LINUX)
+    // Value of the dumpable attribute when breakpad was set up.
+    int dumpable;
+#endif
 };
 
 struct ExcHandler {
@@ -115,12 +123,22 @@ extern "C" {
             std::string dump_path(reinterpret_cast<const char*>(path), path_len);
             google_breakpad::MinidumpDescriptor descriptor(dump_path);
 
+            bp_ctx->dumpable = prctl(PR_GET_DUMPABLE);
+
             auto crash_callback = [](
                 const google_breakpad::MinidumpDescriptor& descriptor,
                 void* context,
                 bool succeeded
             ) -> bool {
                 auto* ctx = (BreakpadContext*)context;
+
+                // Breakpad made the process dumpable to generate the minidump.
+                // Restore the value to 0 if that was the original value. This
+                // ensures the kernel does not generate a core dump when the
+                // signal is re-triggered, which can cause issues with fanotify.
+                if (ctx->dumpable == 0) {
+                    prctl(PR_SET_DUMPABLE, 0);
+                }
 
                 if (!succeeded) {
                     return succeeded;
