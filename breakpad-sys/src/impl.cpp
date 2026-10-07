@@ -3,7 +3,7 @@
 
 #include "exception_handler.h"
 
-#if defined(TARGET_OS_LINUX)
+#if TARGET_OS_LINUX
     #include <sys/prctl.h>
 #endif
 
@@ -20,7 +20,7 @@ typedef void (*dump_callback)(const CHAR_TYPE*, size_t, void*);
 struct BreakpadContext {
     dump_callback callback;
     void* callback_ctx;
-#if defined(TARGET_OS_LINUX)
+#if TARGET_OS_LINUX
     // Value of the dumpable attribute when breakpad was set up.
     int dumpable;
 #endif
@@ -119,7 +119,7 @@ extern "C" {
                 static_cast<google_breakpad::InstallOptions>(install_options), // Which handlers to install, ignored on other platforms
                 nullptr // Don't start a separate process, handle crashes in the same process
             );
-        #elif defined(TARGET_OS_LINUX)
+        #elif TARGET_OS_LINUX
             std::string dump_path(reinterpret_cast<const char*>(path), path_len);
             google_breakpad::MinidumpDescriptor descriptor(dump_path);
 
